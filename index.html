@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Realtime Monitoring Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">🌐 IoT Realtime Monitoring Dashboard</h1>
+                <p class="text-slate-400 text-sm mt-1">
+                    โหนดข้อมูล: <span class="text-white font-mono font-semibold" id="node-id">iot-999</span> | 
+                    สถานะ: <span id="status-badge" class="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300">กำลังเชื่อมต่อ...</span>
+                </p>
+            </div>
+            <div class="mt-4 md:mt-0 text-right">
+                <p class="text-xs text-slate-400">เวลาอัปเดตล่าสุด</p>
+                <p id="last-updated" class="text-lg font-mono font-bold text-slate-200">--:--:--</p>
+            </div>
+        </div>
+
+        <!-- 6 Metrics Display Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">🌡️ อุณหภูมิ</span>
+                <div class="text-2xl font-bold text-rose-400 mt-2"><span id="val-temp">--</span> <span class="text-xs font-normal text-slate-400">°C</span></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">💧 ความชื้น</span>
+                <div class="text-2xl font-bold text-sky-400 mt-2"><span id="val-humi">--</span> <span class="text-xs font-normal text-slate-400">%</span></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">☀️ ความสว่าง</span>
+                <div class="text-2xl font-bold text-amber-400 mt-2"><span id="val-light">--</span> <span class="text-xs font-normal text-slate-400">lx</span></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">⏲️ ความกดอากาศ</span>
+                <div class="text-2xl font-bold text-indigo-400 mt-2"><span id="val-pressure">--</span> <span class="text-xs font-normal text-slate-400">hPa</span></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">🔋 แบตเตอรี่</span>
+                <div class="text-2xl font-bold text-emerald-400 mt-2"><span id="val-battery">--</span> <span class="text-xs font-normal text-slate-400">V</span></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                <span class="text-xs text-slate-400 font-medium">⏱️ Timestamp</span>
+                <div class="text-xs font-mono font-bold text-slate-300 mt-3 truncate" id="val-timestamp">--</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-base font-semibold text-slate-200 mb-4">📈 แนวโน้มอุณหภูมิและความชื้น (History)</h2>
+                <div class="relative h-64 w-full">
+                    <canvas id="tempHumiChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-base font-semibold text-slate-200 mb-4">📊 แนวโน้มความสว่างและแรงดันไฟ (History)</h2>
+                <div class="relative h-64 w-full">
+                    <canvas id="lightBattChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // กำหนด URL ของ Firebase และโหนด
+        const DB_URL = "https://work9-cc427-default-rtdb.asia-southeast1.firebasedatabase.app";
+        const NODE = "iot-999";
+
+        document.getElementById("node-id").innerText = NODE;
+
+        // กำหนดค่ากราฟอุณหภูมิและความชื้น
+        const ctx1 = document.getElementById('tempHumiChart').getContext('2d');
+        const tempHumiChart = new Chart(ctx1, {
+            type: 'line',
+            data: { 
+                labels: [], 
+                datasets: [
+                    { label: 'Temp (°C)', borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', data: [], fill: true, tension: 0.3 },
+                    { label: 'Humi (%)', borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', data: [], fill: true, tension: 0.3 }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { 
+                    x: { ticks: { color: '#94a3b8' } }, 
+                    y: { ticks: { color: '#94a3b8' } } 
+                } 
+            }
+        });
+
+        // กำหนดค่ากราฟความสว่างและแบตเตอรี่ (แกน Y ซ้าย-ขวา)
+        const ctx2 = document.getElementById('lightBattChart').getContext('2d');
+        const lightBattChart = new Chart(ctx2, {
+            type: 'line',
+            data: { 
+                labels: [], 
+                datasets: [
+                    { label: 'Light (lx)', borderColor: '#fbbf24', data: [], yAxisID: 'y', tension: 0.3 },
+                    { label: 'Battery (V)', borderColor: '#34d399', data: [], yAxisID: 'y1', tension: 0.3 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#94a3b8' } },
+                    y: { type: 'linear', position: 'left', ticks: { color: '#fbbf24' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#34d399' } }
+                }
+            }
+        });
+
+        // ดึงข้อมูลค่าล่าสุด (/latest)
+        async function fetchLatest() {
+            try {
+                const res = await fetch(`${DB_URL}/${NODE}/latest.json`);
+                const data = await res.json();
+                if (data) {
+                    document.getElementById('val-temp').innerText = data.temp !== undefined ? data.temp.toFixed(1) : '--';
+                    document.getElementById('val-humi').innerText = data.humi !== undefined ? data.humi.toFixed(1) : '--';
+                    document.getElementById('val-light').innerText = data.light !== undefined ? Math.round(data.light) : '--';
+                    document.getElementById('val-pressure').innerText = data.pressure !== undefined ? data.pressure.toFixed(1) : '--';
+                    document.getElementById('val-battery').innerText = data.battery !== undefined ? data.battery.toFixed(2) : '--';
+                    document.getElementById('val-timestamp').innerText = data.timestamp ?? '--';
+
+                    if (data.timestamp) {
+                        const date = new Date(data.timestamp * 1000);
+                        document.getElementById('last-updated').innerText = date.toLocaleTimeString('th-TH');
+                    }
+
+                    document.getElementById('status-badge').className = "px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-300";
+                    document.getElementById('status-badge').innerText = "ONLINE (Realtime)";
+                }
+            } catch (err) {
+                document.getElementById('status-badge').className = "px-2 py-0.5 rounded text-xs bg-rose-500/20 text-rose-300";
+                document.getElementById('status-badge').innerText = "OFFLINE Error";
+            }
+        }
+
+        // ดึงประวัติย้อนหลัง (/history) มาพล็อตบนกราฟ
+        async function fetchHistory() {
+            try {
+                const res = await fetch(`${DB_URL}/${NODE}/history.json?orderBy="$key"&limitToLast=15`);
+                const data = await res.json();
+                if (data) {
+                    const times = [], temps = [], humis = [], lights = [], batts = [];
+                    Object.values(data).forEach(item => {
+                        const t = item.timestamp ? new Date(item.timestamp * 1000).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                        times.push(t);
+                        temps.push(item.temp);
+                        humis.push(item.humi);
+                        lights.push(item.light);
+                        batts.push(item.battery);
+                    });
+
+                    // อัปเดตกราฟที่ 1
+                    tempHumiChart.data.labels = times;
+                    tempHumiChart.data.datasets[0].data = temps;
+                    tempHumiChart.data.datasets[1].data = humis;
+                    tempHumiChart.update();
+
+                    // อัปเดตกราฟที่ 2
+                    lightBattChart.data.labels = times;
+                    lightBattChart.data.datasets[0].data = lights;
+                    lightBattChart.data.datasets[1].data = batts;
+                    lightBattChart.update();
+                }
+            } catch (err) {
+                console.error("Fetch history error:", err);
+            }
+        }
+
+        // เริ่มต้นการดึงข้อมูลและวนซ้ำทุก 3 วินาที
+        fetchLatest();
+        fetchHistory();
+        setInterval(() => {
+            fetchLatest();
+            fetchHistory();
+        }, 3000);
+    </script>
+</body>
+</html>
