@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Realtime Monitoring Dashboard</title>
+    <title>IoT Smart Home - 119 Dashboard</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -15,10 +15,10 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">🌐 IoT Realtime Monitoring Dashboard</h1>
+                <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">🏠 IoT Smart Home - 119</h1>
                 <p class="text-slate-400 text-sm mt-1">
-                    โหนดข้อมูล: <span class="text-white font-mono font-semibold" id="node-id">iot-119</span> | 
-                    สถานะ: <span id="status-badge" class="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300">กำลังเชื่อมต่อ...</span>
+                    โหนดควบคุม: <span class="text-white font-mono font-semibold" id="node-id">iot-119</span> | 
+                    สถานะระบบ: <span id="status-badge" class="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300">กำลังเชื่อมต่อ...</span>
                 </p>
             </div>
             <div class="mt-4 md:mt-0 text-right">
@@ -30,15 +30,15 @@
         <!-- 6 Metrics Display Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
-                <span class="text-xs text-slate-400 font-medium">🌡️ อุณหภูมิ</span>
+                <span class="text-xs text-slate-400 font-medium">🌡️ อุณหภูมิห้อง</span>
                 <div class="text-2xl font-bold text-rose-400 mt-2"><span id="val-temp">--</span> <span class="text-xs font-normal text-slate-400">°C</span></div>
             </div>
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
-                <span class="text-xs text-slate-400 font-medium">💧 ความชื้น</span>
+                <span class="text-xs text-slate-400 font-medium">💧 ความชื้นห้อง</span>
                 <div class="text-2xl font-bold text-sky-400 mt-2"><span id="val-humi">--</span> <span class="text-xs font-normal text-slate-400">%</span></div>
             </div>
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
-                <span class="text-xs text-slate-400 font-medium">☀️ ความสว่าง</span>
+                <span class="text-xs text-slate-400 font-medium">💡 ความสว่างในห้อง</span>
                 <div class="text-2xl font-bold text-amber-400 mt-2"><span id="val-light">--</span> <span class="text-xs font-normal text-slate-400">lx</span></div>
             </div>
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -46,7 +46,7 @@
                 <div class="text-2xl font-bold text-indigo-400 mt-2"><span id="val-pressure">--</span> <span class="text-xs font-normal text-slate-400">hPa</span></div>
             </div>
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
-                <span class="text-xs text-slate-400 font-medium">🔋 แบตเตอรี่</span>
+                <span class="text-xs text-slate-400 font-medium">🔋 แบตเตอรี่สำรอง</span>
                 <div class="text-2xl font-bold text-emerald-400 mt-2"><span id="val-battery">--</span> <span class="text-xs font-normal text-slate-400">V</span></div>
             </div>
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -58,13 +58,13 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h2 class="text-base font-semibold text-slate-200 mb-4">📈 แนวโน้มอุณหภูมิและความชื้น (History)</h2>
+                <h2 class="text-base font-semibold text-slate-200 mb-4">📈 แนวโน้มอุณหภูมิและความชื้นห้อง (History)</h2>
                 <div class="relative h-64 w-full">
                     <canvas id="tempHumiChart"></canvas>
                 </div>
             </div>
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h2 class="text-base font-semibold text-slate-200 mb-4">📊 แนวโน้มความสว่างและแรงดันไฟ (History)</h2>
+                <h2 class="text-base font-semibold text-slate-200 mb-4">📊 แนวโน้มความสว่างและแบตเตอรี่ (History)</h2>
                 <div class="relative h-64 w-full">
                     <canvas id="lightBattChart"></canvas>
                 </div>
@@ -73,21 +73,20 @@
     </div>
 
     <script>
-        // กำหนด URL ของ Firebase และโหนดข้อมูลใหม่
         const DB_URL = "https://work9-cc427-default-rtdb.asia-southeast1.firebasedatabase.app";
         const NODE = "iot-119";
 
         document.getElementById("node-id").innerText = NODE;
 
-        // กำหนดค่ากราฟอุณหภูมิและความชื้น
+        // กราฟอุณหภูมิและความชื้น
         const ctx1 = document.getElementById('tempHumiChart').getContext('2d');
         const tempHumiChart = new Chart(ctx1, {
             type: 'line',
             data: { 
                 labels: [], 
                 datasets: [
-                    { label: 'Temp (°C)', borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', data: [], fill: true, tension: 0.3 },
-                    { label: 'Humi (%)', borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', data: [], fill: true, tension: 0.3 }
+                    { label: 'Room Temp (°C)', borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', data: [], fill: true, tension: 0.3 },
+                    { label: 'Room Humi (%)', borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', data: [], fill: true, tension: 0.3 }
                 ]
             },
             options: { 
@@ -100,15 +99,15 @@
             }
         });
 
-        // กำหนดค่ากราฟความสว่างและแบตเตอรี่ (แกน Y ซ้าย-ขวา)
+        // กราฟแสงสว่างและแบตเตอรี่
         const ctx2 = document.getElementById('lightBattChart').getContext('2d');
         const lightBattChart = new Chart(ctx2, {
             type: 'line',
             data: { 
                 labels: [], 
                 datasets: [
-                    { label: 'Light (lx)', borderColor: '#fbbf24', data: [], yAxisID: 'y', tension: 0.3 },
-                    { label: 'Battery (V)', borderColor: '#34d399', data: [], yAxisID: 'y1', tension: 0.3 }
+                    { label: 'Room Light (lx)', borderColor: '#fbbf24', data: [], yAxisID: 'y', tension: 0.3 },
+                    { label: 'Backup Batt (V)', borderColor: '#34d399', data: [], yAxisID: 'y1', tension: 0.3 }
                 ]
             },
             options: {
@@ -122,7 +121,7 @@
             }
         });
 
-        // ดึงข้อมูลค่าล่าสุด (/latest)
+        // ดึงค่าล่าสุด (/latest)
         async function fetchLatest() {
             try {
                 const res = await fetch(`${DB_URL}/${NODE}/latest.json`);
@@ -149,7 +148,7 @@
             }
         }
 
-        // ดึงประวัติย้อนหลัง (/history) มาพล็อตบนกราฟ
+        // ดึงประวัติย้อนหลัง (/history)
         async function fetchHistory() {
             try {
                 const res = await fetch(`${DB_URL}/${NODE}/history.json?orderBy="$key"&limitToLast=15`);
@@ -165,13 +164,11 @@
                         batts.push(item.battery);
                     });
 
-                    // อัปเดตกราฟที่ 1
                     tempHumiChart.data.labels = times;
                     tempHumiChart.data.datasets[0].data = temps;
                     tempHumiChart.data.datasets[1].data = humis;
                     tempHumiChart.update();
 
-                    // อัปเดตกราฟที่ 2
                     lightBattChart.data.labels = times;
                     lightBattChart.data.datasets[0].data = lights;
                     lightBattChart.data.datasets[1].data = batts;
@@ -182,7 +179,6 @@
             }
         }
 
-        // เริ่มต้นการดึงข้อมูลและวนซ้ำทุก 3 วินาที
         fetchLatest();
         fetchHistory();
         setInterval(() => {
